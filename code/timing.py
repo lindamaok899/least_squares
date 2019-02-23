@@ -1,6 +1,7 @@
 import numpy as np
 from time import time
 import math
+from ols import generate_data_ols,  matrix_inversion_np
 
 
 def runtime(func, args=(), duration=5.0):
@@ -14,7 +15,7 @@ def runtime(func, args=(), duration=5.0):
     Returns:
         runtimes_dict (dict): Dictionary with the following keys:
             - average_runtime
-            - median_runtime
+            - median_runtimes
             - runtimes
             - standard_deviation
             - repetitions
@@ -73,13 +74,3 @@ def find_good_unit(time):
 
     time = np.round(time, 2)
     return 'The median runtime is {} {}seconds'.format(time, prefixes[idx])
-
-x = np.arange(10000)
-y = np.ones(10000)
-
-
-def test_func(x, y):
-    return x.dot(y)
-
-rt = runtime(test_func, args=(x, y))
-print(rt['string'])
