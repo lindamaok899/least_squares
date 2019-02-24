@@ -1,75 +1,28 @@
 import numpy as np
 from numba import njit
-from sklearn.datasets import make_regression
-import pandas as pd
 from scipy.linalg.blas import dgemm
 import scipy.linalg as sl
-from timing import runtime, core_timer, find_good_unit
+from sklearn.datasets import make_regression
+import pandas as pd
+from timing import core_timer
+import matplotlib.pyplot as plt
+import seaborn as sns
+#from matplotlib import inline
+sns.set_context('poster')
+sns.set_palette('Paired', 10)
+sns.set_color_codes()
 
-#Inputs
+
+#inputs
 dataset_obs = np.hstack([np.arange(1, 6) * 300,
                            np.arange(3,7) * 800, np.arange(4,17) * 1600])
 dataset_vars = np.arange(5,50,5)
+func_list = ['matrix_inversion_np', 'lstsq_np', 'pseudo_inverse_np', 'solve_np',
+             'lls_with_blas', 'matrix_inversion_spicy', 'lstsq_spicy',
+             'solve_spicy', 'lu_solve_spicy', 'cholesky_np', 'qr_np']
 
 
-#function to generate a single dataset, switch coef on for true beta
-def generate_data_ols(nobs=20000, variable=50):
-    x, y = make_regression(n_samples=nobs, n_features=variable, n_informative=variable, 
-                    effective_rank=None, noise=0.4, shuffle=True, coef=False, random_state=25)
-    return x, y
-
-#benchmark algorithm for different dataset sizes
-def benchmark_algorithm_datasets(dataset_obs, ols_function):
-    """Benchmarking code at various datasets.
-    Args:
-        dataset_sizes(array): different observation sizes (nobs,).
-        ols_function (function): the ols implementation to be benchmarked.
-        function_args(numpy arrays): The arguments with which the function is 
-            called.
-        
-    Returns: pd.DataFrame (len(dataset_sizes, 2)) with dataset sizes and timing
-        for the different dataset sizes
-    """
-    
-    output = []
-
-    for index, size in enumerate(dataset_obs):
-        # Use sklearns make_regression to generate a random dataset with specified
-        x, y = generate_data_ols()
-        # Start the functions with timer
-        time_taken = core_timer(ols_function, args=(x, y))
-        output.append(time_taken)
-    time_data = np.asarray(output).reshape(len(dataset_obs))
-    
-    return pd.DataFrame(np.vstack([dataset_obs, time_data])).T
-
-#benchmark algorithm for different number of variables
-def benchmark_algorithm_variables(dataset_vars, ols_function):
-    """Benchmarking code at various datasets.
-    Args:
-        dataset_vars(array): different observation sizes (variable,).
-        ols_function (function): the ols implementation to be benchmarked.
-        function_args(numpy arrays): The arguments with which the function is 
-            called.
-        
-    Returns: pd.DataFrame (len(dataset_vars, 2)) with dataset sizes and timing
-        for the different dataset sizes
-    """
-    
-    output = []
-
-    for index, size in enumerate(dataset_vars):
-        # Use sklearns make_regression to generate a random dataset with specified
-        x, y = generate_data_ols()
-        # Start the functions with timer
-        time_taken = core_timer(pseudo_inverse_np, args=(x, y))
-        output.append(time_taken)
-    time_data = np.asarray(output).reshape(len(dataset_vars))
-    
-    return pd.DataFrame(np.vstack([dataset_vars, time_data])).T
-
-
-#Task 3
+#ols implementations
 """Define different implementations of OLS using numpy and numpy and spicy.
 
 Each implementation returns the estimated parameter vector.
@@ -88,7 +41,7 @@ def lstsq_np(x, y):
     beta = np.linalg.lstsq(x, y)[0]
     return beta
 
-#pseudo inverse implementation numpy
+#pseudo inverse implementation numpy - too slow
 @njit
 def pseudo_inverse_np(x, y):
     beta = np.dot(np.linalg.pinv(x), y)
@@ -100,17 +53,26 @@ def solve_np(x,y):
     beta = np.linalg.solve(np.dot(x.T, x), np.dot(x.T, y))
     return beta
 
-def lls_with_blas(x, y, nobs=20000, variable=50, residuals=False):
+def lls_with_blas(x, y, residuals=False):
     """
     https://gist.github.com/aldro61/5889795
     """
-    #a, b, coef = generate_data_ols(nobs, variables) - a, b are x, y
-    
-    a, b, coef = make_regression(n_samples=nobs, n_features=variable, n_informative=variable, 
-                    effective_rank=None, noise=0.4, shuffle=True, coef=True, random_state=25)
-    
-    i = dgemm(alpha=1.0, a=a.T, b=a.T, trans_b=True)
-    beta = np.linalg.solve(i, dgemm(alpha=1.0, a=a.T, b=b)).flatten()
+    i = dgemm(alpha=1.0, a=x.T, b=x.T, trans_b=True)
+    beta = np.linalg.solve(i, dgemm(alpha=1.0, a=x.T, b=y)).flatten()
+    return beta
+
+#Cholesky decomposition with numpy
+@njit
+def cholesky_np(x, y):
+    l = np.linalg.cholesky(x.T.dot(x))
+    c = forward_substitution(l, x.T.dot(y))
+    beta = backward_substitution(l.T, c)
+    return beta
+
+@njit
+def qr_np(x, y):
+    q, r = np.linalg.qr(x)
+    beta = np.linalg.inv(r).dot(q.T.dot(y))
     return beta
 
 #---------spicy implementations----------------
@@ -127,7 +89,7 @@ def lstsq_spicy(x, y):
     return beta
 
 #pseudo inverse implementation spicy was too slow and is not included in the plot
-@njit
+#@njit
 def pseudo_inverse_spicy(x, y):
     beta = np.dot(sl.pinv(x), y)
     return beta
@@ -136,12 +98,181 @@ def pseudo_inverse_spicy(x, y):
 #@njit
 def solve_spicy(x,y):
     beta = sl.solve(np.dot(x.T, x), np.dot(x.T, y))
-    return beta     
+    return beta
+
+# LU decomposition with scipy
+def lu_solve_spicy(x, y):
+    lu, piv = sl.lu_factor(x.T @ x)
+    beta = sl.lu_solve((lu, piv), x.T @ y)  
+    return beta
+
+#Helper functions for numpy cholesky decomposition
+@njit
+def forward_substitution(l, b):
+    """Solves Ly=b.
+    
+    L has to be a lower triangular matrix. It is not required that the diagonal
+    has only elements of 1.
+    
+    References
+    ----------
+    - https://pages.mtu.edu/~shene/COURSES/cs3621/NOTES/INT-APP/CURVE-linear-system.html
+    
+    """
+    y = np.zeros(b.shape[0])
+    y[0] = b[0] / l[0, 0]
+    for i in range(1, b.shape[0]):
+        _sum = np.sum(l[i, :i] * y[:i])
+        y[i] = (b[i] - _sum) / l[i, i]
+    return y
 
 
+@njit
+def backward_substitution(u, y):
+    """Solves Ux=y.
+    
+    References
+    ----------
+    - https://pages.mtu.edu/~shene/COURSES/cs3621/NOTES/INT-APP/CURVE-linear-system.html
+    
+    """
+    x = np.zeros(y.shape[0])
+    x[-1] = y[-1] / u[-1, -1]
+    for i in range(y.shape[0] - 2, -1, -1):
+        _sum = np.sum(u[i, i+1:] * x[i+1:])
+        x[i] = (y[i] - _sum) / u[i, i]
+            
+    return x
 
 
+#benchmark functions
+#function to generate a single dataset, switch coef on for true beta
+def generate_data_ols(nobs=20000, variable=50):
+    x, y = make_regression(n_samples=nobs, n_features=variable, n_informative=variable, 
+                    effective_rank=None, noise=0.4, shuffle=True, coef=False, random_state=25)
+    return x, y
+
+#benchmark algorithm for different dataset sizes
+def benchmark_algorithm_datasets(dataset_obs, functions):
+    """Benchmarking code for various observation sizes.
+    Args:
+        dataset_sizes(array): different observation sizes (nobs,).
+        functions (function): the ols implementation to be benchmarked.
+        function_args(numpy arrays): The arguments with which the function is 
+            called.
+        
+    Returns: pd.DataFrame (len(dataset_sizes, 2)) with dataset sizes and timing
+        for the different dataset sizes
+    """
+    
+    output = []
+
+    for index, size in enumerate(dataset_obs):
+        # Use sklearns make_regression to generate a random dataset with specified
+        x, y = generate_data_ols()
+        # Start the functions with timer
+        time_taken = core_timer(functions, args=(x, y))
+        output.append(time_taken)
+    time_data = np.asarray(output).reshape(len(dataset_obs))
+    
+    return pd.DataFrame(np.vstack(([dataset_obs, time_data])).T, columns=['x','y'])
+
+#benchmark algorithm for different number of variables
+def benchmark_algorithm_variables(dataset_vars, functions):
+    """Benchmarking code for various variable numbers.
+    Args:
+        dataset_vars(array): different observation sizes (variable,).
+        functions (function): the ols implementation to be benchmarked.
+        function_args(numpy arrays): The arguments with which the function is 
+            called.
+        
+    Returns: pd.DataFrame (len(dataset_vars, 2)) with dataset sizes and timing
+        for the different dataset sizes
+    """
+    
+    output = []
+
+    for index, size in enumerate(dataset_vars):
+        # Use sklearns make_regression to generate a random dataset with specified
+        x, y = generate_data_ols()
+        # Start the functions with timer
+        time_taken = core_timer(functions, args=(x, y))
+        output.append(time_taken)
+    time_data = np.asarray(output).reshape(len(dataset_vars))
+    
+    return pd.DataFrame(np.vstack(([dataset_vars, time_data])).T, columns=['x','y'])
 
 
+#benchmark plotting - try to get this to work
+def batch_benchmark_datasets(func_list):
+    """Run a batch benchark for the ols implementations.
+    Args:
+        funct_list (list): List of ols implementations from ols.py
+        benchmark_func (function): benchmark function to perform the batch 
+            benchmarknig
+            
+    Returns:
+        batch_time_data(dict): dictionary with timings for the different
+        observation sizes for all the ols implementations.
+    """
+    result = []
+    for functions in func_list:
+        batch_dataset_data = benchmark_algorithm_datasets(dataset_vars, *functions) 
+        result.append(batch_dataset_data)
+    return batch_dataset_data
+    
+#getting datasets for plots
+func_list = ['matrix_inversion_np', 'lstsq_np', 'pseudo_inverse_np', 'solve_np',
+             'lls_with_blas', 'matrix_inversion_spicy', 'lstsq_spicy',
+             'solve_spicy', 'lu_solve_spicy', 'cholesky_np', 'qr_np']
+
+dataset_a = benchmark_algorithm_datasets(dataset_obs, matrix_inversion_np)
+dataset_b = benchmark_algorithm_datasets(dataset_obs, lstsq_np)
+dataset_c = benchmark_algorithm_datasets(dataset_obs, pseudo_inverse_np)
+dataset_d = benchmark_algorithm_datasets(dataset_obs, solve_np)
+dataset_e = benchmark_algorithm_datasets(dataset_obs, lls_with_blas)
+dataset_f = benchmark_algorithm_datasets(dataset_obs, matrix_inversion_spicy)
+dataset_g = benchmark_algorithm_datasets(dataset_obs, lstsq_spicy)
+dataset_h = benchmark_algorithm_datasets(dataset_obs, pseudo_inverse_spicy)
+dataset_i = benchmark_algorithm_datasets(dataset_obs, solve_spicy)
+dataset_j = benchmark_algorithm_datasets(dataset_obs, lu_solve_spicy)
+dataset_k = benchmark_algorithm_datasets(dataset_obs, cholesky_np)
+dataset_l = benchmark_algorithm_datasets(dataset_obs, qr_np)
+
+#plotting the perfomance comparison of different implementations
+for k in range (5):
+    sns.regplot(x='x', y='y', data=dataset_a, order=k,
+                label='matrix_inversion_np', dropna=False)
+    sns.regplot(x='x', y='y', data=dataset_b, order=k,
+                label='lstsq_np', dropna=False)
+    sns.regplot(x='x', y='y', data=dataset_c, order=k,
+                label='pseudo_inverse_np', dropna=False)
+    sns.regplot(x='x', y='y', data=dataset_d, order=k,
+                label='solve_np', dropna=False)
+    sns.regplot(x='x', y='y', data=dataset_e, order=k,
+                label='lls_with_blas', dropna=False)
+    sns.regplot(x='x', y='y', data=dataset_f, order=k,
+                label='matrix_inversion_spicy', dropna=False)
+    sns.regplot(x='x', y='y', data=dataset_g, order=k,
+                label='lstsq_spicy', dropna=False)
+    sns.regplot(x='x', y='y', data=dataset_h, order=k,
+                label='pseudo_inverse_spicy', dropna=False)
+    sns.regplot(x='x', y='y', data=dataset_i, order=k,
+                label='solve_spicy', dropna=False)
+    sns.regplot(x='x', y='y', data=dataset_j, order=k,
+                label='lu_solve_spicy', dropna=False)
+    sns.regplot(x='x', y='y', data=dataset_k, order=k,
+                label='cholesky_np', dropna=False)
+    sns.regplot(x='x', y='y', data=dataset_l, order=k,
+                label='qr_np', dropna=True)
+    plt.gca().axis([0, 30000, -0.01, 0.2], fontsize='xx-small')
+    plt.gca().set_xlabel('nobs', fontsize = 'xx-small')
+    plt.gca().set_ylabel('Time taken', fontsize = 'xx-small')
+    plt.title('Ols Implementations', fontsize = 'x-small')
+    plt.legend(loc='center left', bbox_to_anchor=(1, 0.5), frameon=True, fontsize = 'xx-small')
+    #plt.figure(figsize=(1,1))
+    plt.savefig("Perfomance_ols.png").format(k)
+    plt.show()
+    plt.clf()
 
 

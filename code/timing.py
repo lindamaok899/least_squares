@@ -1,7 +1,6 @@
 import numpy as np
 from time import time
 import math
-from ols import generate_data_ols,  matrix_inversion_np
 
 
 def runtime(func, args=(), duration=5.0):
@@ -49,7 +48,7 @@ def runtime(func, args=(), duration=5.0):
     }
     return runtime_dict
 
-
+            
 def core_timer(func, args=(), num_iter=1):
     runtimes = []
     for i in range(num_iter):
@@ -64,7 +63,7 @@ def core_timer(func, args=(), num_iter=1):
         runtimes.append(corrected_time)
     return runtimes
 
-
+   
 def find_good_unit(time):
     prefixes = ['', 'milli', 'micro', 'nano', 'pico', 'femto', 'atto']
     idx = 0
