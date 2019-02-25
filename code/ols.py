@@ -1,5 +1,5 @@
 import numpy as np
-from numba import njit
+#from numba import njit
 from scipy.linalg.blas import dgemm
 import scipy.linalg as sl
 from sklearn.datasets import make_regression
@@ -18,8 +18,8 @@ startt = time.time()
 
 #inputs
 dataset_obs = np.hstack([np.arange(1, 6) * 300,
-                           np.arange(3,7) * 800, np.arange(4,17) * 4000])
-dataset_vars = np.arange(5,500,15)
+                           np.arange(3,7) * 800, np.arange(4,17) * 1600])
+dataset_vars = np.arange(5,50,10)
 func_list = ['matrix_inversion_np', 'lstsq_np', 'pseudo_inverse_np', 'solve_np',
              'lls_with_blas', 'matrix_inversion_spicy', 'lstsq_spicy',
              'solve_spicy', 'lu_solve_spicy', 'cholesky_np', 'qr_np']
@@ -32,25 +32,25 @@ Each implementation returns the estimated parameter vector.
 """
 #---------numpy implementations---------------
 #mathematical implemantation numpy
-@njit
+#@njit
 def matrix_inversion_np(x, y):
     beta = np.linalg.inv(x.T.dot(x)).dot(x.T.dot(y))
     return beta
 
 # least squares implementation numpy
-@njit
+#@njit
 def lstsq_np(x, y):
     beta = np.linalg.lstsq(x, y)[0]
     return beta
 
 #pseudo inverse implementation numpy - too slow
-@njit
+#@njit
 def pseudo_inverse_np(x, y):
     beta = np.dot(np.linalg.pinv(x), y)
     return beta
 
 # Solve implementation with numpy.
-@njit
+#@njit
 def solve_np(x,y):
     beta = np.linalg.solve(np.dot(x.T, x), np.dot(x.T, y))
     return beta
@@ -64,14 +64,14 @@ def lls_with_blas(x, y, residuals=False):
     return beta
 
 #Cholesky decomposition with numpy
-@njit
+#@njit
 def cholesky_np(x, y):
     l = np.linalg.cholesky(x.T.dot(x))
     c = forward_substitution(l, x.T.dot(y))
     beta = backward_substitution(l.T, c)
     return beta
 
-@njit
+#@njit
 def qr_np(x, y):
     q, r = np.linalg.qr(x)
     beta = np.linalg.inv(r).dot(q.T.dot(y))
@@ -109,7 +109,7 @@ def lu_solve_spicy(x, y):
     return beta
 
 #Helper functions for numpy cholesky decomposition
-@njit
+#@njit
 def forward_substitution(l, b):
     """Solves Ly=b.
 
@@ -129,7 +129,7 @@ def forward_substitution(l, b):
     return y
 
 
-@njit
+#@njit
 def backward_substitution(u, y):
     """Solves Ux=y.
 
@@ -167,15 +167,14 @@ def benchmark_algorithm_datasets(dataset_obs, functions):
         for the different dataset sizes
     """
 
-    output = np.ones(len(dataset_obs))
+    output = []
 
-    for index, size in enumerate(dataset_obs):
+    for size in dataset_obs:
         # Use sklearns make_regression to generate a random dataset with specified
-        x, y = make_regression(n_samples=size, n_features=50, n_informative=50,
-                effective_rank=None, noise=0.4, shuffle=True, coef=False, random_state=25)
+        x, y = generate_data_ols(nobs=size)
         # Start the functions with timer
-        time_taken = runtime(functions, args=(x, y), duration=1.0)['median_runtime']
-        output[index] = time_taken
+        time_taken = runtime(functions, args=(x, y), duration=0.5)['median_runtime']
+        output.append(time_taken)
     time_data = np.asarray(output).reshape(len(dataset_obs))
 
     return pd.DataFrame(np.vstack(([dataset_obs, time_data])).T, columns=['x','y'])
@@ -195,11 +194,11 @@ def benchmark_algorithm_variables(dataset_vars, functions):
 
     output = []
 
-    for index, size in enumerate(dataset_vars):
+    for size in dataset_vars:
         # Use sklearns make_regression to generate a random dataset with specified
         x, y = generate_data_ols(variable=size)
         # Start the functions with timer
-        time_taken = core_timer(functions, args=(x, y))
+        time_taken = runtime(functions, args=(x, y), duration=0.5)['median_runtime']
         output.append(time_taken)
     time_data = np.asarray(output).reshape(len(dataset_vars))
 
