@@ -4,7 +4,7 @@ import time
 import math
 
 
-def runtime(func, args=(), duration=5.0):
+def runtime(func, args=(), duration=0.5):
     """Time a function.
 
     Args:
