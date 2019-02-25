@@ -1,5 +1,6 @@
 import numpy as np
-from time import time
+#from time import time
+import time
 import math
 
 
@@ -52,15 +53,15 @@ def runtime(func, args=(), duration=5.0):
 def core_timer(func, args=(), num_iter=1):
     runtimes = []
     for i in range(num_iter):
-        start = time()
+        start = time.time()
         func(*args)
-        stop = time()
+        stop = time.time()
         raw_time = stop - start
-        start = time()
-        stop = time(*())
-        delta = stop - start
-        corrected_time = raw_time - delta
-        runtimes.append(corrected_time)
+        #start = time()
+        #stop = time(*())
+        #delta = stop - start
+        #corrected_time = raw_time - delta
+        runtimes.append(raw_time)
     return runtimes
 
    
