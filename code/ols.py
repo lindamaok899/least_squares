@@ -13,6 +13,8 @@ sns.set_context('poster')
 sns.set_palette('Paired', 10)
 sns.set_color_codes()
 
+startt = time.time()
+
 
 #inputs
 dataset_obs = np.hstack([np.arange(1, 6) * 300,
@@ -85,7 +87,7 @@ def matrix_inversion_spicy(x, y):
 # least squares implementation spicy
 #@njit
 def lstsq_spicy(x, y):
-    beta = np.linalg.lstsq(x, y)[0]    
+    beta = np.linalg.lstsq(x, y)[0]
     return beta
 
 #pseudo inverse implementation spicy was too slow and is not included in the plot
@@ -103,21 +105,21 @@ def solve_spicy(x,y):
 # LU decomposition with scipy
 def lu_solve_spicy(x, y):
     lu, piv = sl.lu_factor(x.T @ x)
-    beta = sl.lu_solve((lu, piv), x.T @ y)  
+    beta = sl.lu_solve((lu, piv), x.T @ y)
     return beta
 
 #Helper functions for numpy cholesky decomposition
 @njit
 def forward_substitution(l, b):
     """Solves Ly=b.
-    
+
     L has to be a lower triangular matrix. It is not required that the diagonal
     has only elements of 1.
-    
+
     References
     ----------
     - https://pages.mtu.edu/~shene/COURSES/cs3621/NOTES/INT-APP/CURVE-linear-system.html
-    
+
     """
     y = np.zeros(b.shape[0])
     y[0] = b[0] / l[0, 0]
@@ -130,25 +132,25 @@ def forward_substitution(l, b):
 @njit
 def backward_substitution(u, y):
     """Solves Ux=y.
-    
+
     References
     ----------
     - https://pages.mtu.edu/~shene/COURSES/cs3621/NOTES/INT-APP/CURVE-linear-system.html
-    
+
     """
     x = np.zeros(y.shape[0])
     x[-1] = y[-1] / u[-1, -1]
     for i in range(y.shape[0] - 2, -1, -1):
         _sum = np.sum(u[i, i+1:] * x[i+1:])
         x[i] = (y[i] - _sum) / u[i, i]
-            
+
     return x
 
 
 #benchmark functions
 #function to generate a single dataset, switch coef on for true beta
 def generate_data_ols(nobs=20000, variable=50):
-    x, y = make_regression(n_samples=nobs, n_features=variable, n_informative=variable, 
+    x, y = make_regression(n_samples=nobs, n_features=variable, n_informative=variable,
                     effective_rank=None, noise=0.4, shuffle=True, coef=False, random_state=25)
     return x, y
 
@@ -158,26 +160,24 @@ def benchmark_algorithm_datasets(dataset_obs, functions):
     Args:
         dataset_sizes(array): different observation sizes (nobs,).
         functions (function): the ols implementation to be benchmarked.
-        function_args(numpy arrays): The arguments with which the function is 
+        function_args(numpy arrays): The arguments with which the function is
             called.
-        
+
     Returns: pd.DataFrame (len(dataset_sizes, 2)) with dataset sizes and timing
         for the different dataset sizes
     """
-    
+
     output = np.ones(len(dataset_obs))
 
     for index, size in enumerate(dataset_obs):
         # Use sklearns make_regression to generate a random dataset with specified
-        x, y = make_regression(n_samples=size, n_features=50, n_informative=50, 
+        x, y = make_regression(n_samples=size, n_features=50, n_informative=50,
                 effective_rank=None, noise=0.4, shuffle=True, coef=False, random_state=25)
         # Start the functions with timer
-        start_time = time.time()
-        functions(x, y)
-        time_taken = time.time() - start_time
+        time_taken = runtime(functions, args=(x, y), duration=1.0)['median_runtime']
         output[index] = time_taken
     time_data = np.asarray(output).reshape(len(dataset_obs))
-    
+
     return pd.DataFrame(np.vstack(([dataset_obs, time_data])).T, columns=['x','y'])
 
 #benchmark algorithm for different number of variables
@@ -186,13 +186,13 @@ def benchmark_algorithm_variables(dataset_vars, functions):
     Args:
         dataset_vars(array): different observation sizes (variable,).
         functions (function): the ols implementation to be benchmarked.
-        function_args(numpy arrays): The arguments with which the function is 
+        function_args(numpy arrays): The arguments with which the function is
             called.
-        
+
     Returns: pd.DataFrame (len(dataset_vars, 2)) with dataset sizes and timing
         for the different dataset sizes
     """
-    
+
     output = []
 
     for index, size in enumerate(dataset_vars):
@@ -202,7 +202,7 @@ def benchmark_algorithm_variables(dataset_vars, functions):
         time_taken = core_timer(functions, args=(x, y))
         output.append(time_taken)
     time_data = np.asarray(output).reshape(len(dataset_vars))
-    
+
     return pd.DataFrame(np.vstack(([dataset_vars, time_data])).T, columns=['x','y'])
 
 
@@ -211,19 +211,19 @@ def batch_benchmark_datasets(func_list):
     """Run a batch benchark for the ols implementations.
     Args:
         funct_list (list): List of ols implementations from ols.py
-        benchmark_func (function): benchmark function to perform the batch 
+        benchmark_func (function): benchmark function to perform the batch
             benchmarknig
-            
+
     Returns:
         batch_time_data(dict): dictionary with timings for the different
         observation sizes for all the ols implementations.
     """
     batch_dataset_data = []
     for functions in func_list:
-        result = benchmark_algorithm_datasets(dataset_obs, *functions) 
+        result = benchmark_algorithm_datasets(dataset_obs, *functions)
         batch_dataset_data.append(result)
     return batch_dataset_data
-    
+
 #getting datasets for plots
 dataset_a = benchmark_algorithm_datasets(dataset_obs, matrix_inversion_np)
 dataset_b = benchmark_algorithm_datasets(dataset_obs, lstsq_np)
@@ -284,7 +284,7 @@ for k in range (2):
     plt.title('Ols Implementations', fontsize = 'x-small')
     plt.legend(loc='center left', bbox_to_anchor=(1, 0.5), frameon=True, fontsize = 'xx-small')
     #plt.figure(figsize=(1,1))
-    plt.savefig("Perfomance_ols_obs.png")
+    plt.savefig("Perfomance_ols_obs.png", bbox_inches='tight')
     plt.show()
     plt.clf()
 
@@ -320,11 +320,12 @@ for k in range (2):
     plt.title('Ols Implementations', fontsize = 'x-small')
     plt.legend(loc='center left', bbox_to_anchor=(1, 0.5), frameon=True, fontsize = 'xx-small')
     #plt.figure(figsize=(1,1))
-    plt.savefig("Perfomance_ols_vars.png")
+    plt.savefig("Perfomance_ols_vars.png", bbox_inches='tight')
     plt.show()
     plt.clf()
 
 
 
+stopp = time.time()
 
-
+print(stopp - startt)

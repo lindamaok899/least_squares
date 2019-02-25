@@ -22,17 +22,18 @@ def runtime(func, args=(), duration=5.0):
             - string
 
     """
-    t_zero = core_timer(func, args, 1)[0]
+    t_zero = core_timer(func, args, 2)[1]
 
-    iter_guess = math.floor(duration / t_zero)
+    small_time = 0.0000001
+    iter_guess = math.floor(duration / max(t_zero, small_time))
 
     if iter_guess >= 100:
         t_zero = np.median(core_timer(func, args, 10))
-        num_iter = math.floor(duration / t_zero)
+        num_iter = math.floor(duration / max(t_zero, small_time))
     else:
         num_iter = iter_guess
 
-    runtimes = core_timer(func, args, 1)
+    runtimes = core_timer(func, args, num_iter)
     num_iter = math.floor(duration / runtimes[0])
 
     runtimes = core_timer(func, args, num_iter)
@@ -49,7 +50,7 @@ def runtime(func, args=(), duration=5.0):
     }
     return runtime_dict
 
-            
+
 def core_timer(func, args=(), num_iter=1):
     runtimes = []
     for i in range(num_iter):
@@ -64,7 +65,7 @@ def core_timer(func, args=(), num_iter=1):
         runtimes.append(raw_time)
     return runtimes
 
-   
+
 def find_good_unit(time):
     prefixes = ['', 'milli', 'micro', 'nano', 'pico', 'femto', 'atto']
     idx = 0
