@@ -24,7 +24,7 @@ def runtime(func, args=(), duration=0.5):
     """
     t_zero = core_timer(func, args, 2)[1]
 
-    small_time = 0.0000001
+    small_time = 0.0001
     iter_guess = max(1, math.floor(duration / max(t_zero, small_time)))
 
     if iter_guess >= 100:
@@ -32,7 +32,7 @@ def runtime(func, args=(), duration=0.5):
         num_iter = max(1, math.floor(duration / max(t_zero, small_time)))
     else:
         num_iter = iter_guess
-
+    print(num_iter)
     runtimes = core_timer(func, args, num_iter)
     avg_runtime = np.mean(runtimes)
     median_runtime = np.median(runtimes)
