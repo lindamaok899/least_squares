@@ -1,10 +1,9 @@
 import numpy as np
-#from time import time
 import time
 import math
 
 
-def runtime(func, args=(), duration=0.5):
+def runtime(func, args=(), duration=1.0):
     """Time a function.
 
     Args:
@@ -23,8 +22,7 @@ def runtime(func, args=(), duration=0.5):
 
     """
     t_zero = core_timer(func, args, 2)[1]
-
-    small_time = 0.0001
+    small_time = time.get_clock_info('perf_counter').resolution
     iter_guess = max(1, math.floor(duration / max(t_zero, small_time)))
 
     if iter_guess >= 100:
@@ -32,7 +30,6 @@ def runtime(func, args=(), duration=0.5):
         num_iter = max(1, math.floor(duration / max(t_zero, small_time)))
     else:
         num_iter = iter_guess
-    print(num_iter)
     runtimes = core_timer(func, args, num_iter)
     avg_runtime = np.mean(runtimes)
     median_runtime = np.median(runtimes)
@@ -51,15 +48,15 @@ def runtime(func, args=(), duration=0.5):
 def core_timer(func, args=(), num_iter=1):
     runtimes = []
     for i in range(num_iter):
-        start = time.time()
+        start = time.perf_counter()
         func(*args)
-        stop = time.time()
+        stop = time.perf_counter()
         raw_time = stop - start
-        #start = time()
-        #stop = time(*())
-        #delta = stop - start
-        #corrected_time = raw_time - delta
-        runtimes.append(raw_time)
+        start = time.perf_counter()
+        stop = time.perf_counter()
+        delta = stop - start
+        corrected_time = raw_time - delta
+        runtimes.append(corrected_time)
     return runtimes
 
 

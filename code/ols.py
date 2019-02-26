@@ -4,54 +4,139 @@ from scipy.linalg.blas import dgemm
 import scipy.linalg as sl
 from sklearn.datasets import make_regression
 import pandas as pd
-from timing import core_timer, runtime
+from timing import runtime
 import matplotlib.pyplot as plt
 import seaborn as sns
-import time
-#from matplotlib import inline
+
 sns.set_context('poster')
 sns.set_palette('Paired', 10)
 sns.set_color_codes()
 
-start = time.time()
-
-print(start)
-
-
 data_dim_nobs = [(300, 30), (600, 30)]
 data_dim_vars = [(600, 20), (600, 30)]
 
+nobs_list = (
+   list(range(200, 2000, 200)) 
+   + list(range(2000, 10000, 1000))
+   + list(range(10000, 20000, 2000)))
 
-#ols implementations
+data_dim_nobs = [(nobs, 30) for nobs in nobs_list]
+
+nvariables_list = (
+   list(range(5, 50, 10))
+   + list(range(50, 500, 50)))
+   
+data_dim_vars = [(5000, nvariables) for nvariables in nvariables_list]
+
 """Define different implementations of OLS using numpy and numpy and scipy.
 
 Each implementation returns the estimated parameter vector.
 
 """
-#---------numpy implementations---------------
-#mathematical implemantation numpy
-#@njit
 def matrix_inversion_np(x, y):
     beta = np.linalg.inv(x.T.dot(x)).dot(x.T.dot(y))
     return beta
 
-# least squares implementation numpy
-#@njit
+
 def lstsq_np(x, y):
     beta = np.linalg.lstsq(x, y)[0]
     return beta
 
 
+def pseudo_inverse_np(x, y):
+    beta = np.dot(np.linalg.pinv(x), y)
+    return beta
 
-#benchmark functions
-#function to generate a single dataset, switch coef on for true beta
+
+def solve_np(x,y):
+    beta = np.linalg.solve(np.dot(x.T, x), np.dot(x.T, y))
+    return beta
+
+def lls_with_blas(x, y, residuals=False):
+    """
+    https://gist.github.com/aldro61/5889795
+    """
+    i = dgemm(alpha=1.0, a=x.T, b=x.T, trans_b=True)
+    beta = np.linalg.solve(i, dgemm(alpha=1.0, a=x.T, b=y)).flatten()
+    return beta
+
+def cholesky_np(x, y):
+    l = np.linalg.cholesky(x.T.dot(x))
+    c = forward_substitution(l, x.T.dot(y))
+    beta = backward_substitution(l.T, c)
+    return beta
+
+def qr_np(x, y):
+    q, r = np.linalg.qr(x)
+    beta = np.linalg.inv(r).dot(q.T.dot(y))
+    return beta
+
+def matrix_inversion_scipy(x, y):
+    beta = sl.inv(x.T.dot(x)).dot(x.T.dot(y))
+    return beta
+
+
+def lstsq_scipy(x, y):
+    beta = np.linalg.lstsq(x, y)[0]
+    return beta
+
+#pseudo inverse implementation scipy was too slow and is not included in the plot
+
+def solve_scipy(x,y):
+    beta = sl.solve(np.dot(x.T, x), np.dot(x.T, y))
+    return beta
+
+def lu_solve_scipy(x, y):
+    lu, piv = sl.lu_factor(x.T @ x)
+    beta = sl.lu_solve((lu, piv), x.T @ y)
+    return beta
+
+#Helper functions for numpy cholesky decomposition
+@njit
+def forward_substitution(l, b):
+    """Solves Ly=b.
+
+    L has to be a lower triangular matrix. It is not required that the diagonal
+    has only elements of 1.
+
+    References
+    ----------
+    - https://pages.mtu.edu/~shene/COURSES/cs3621/NOTES/INT-APP/CURVE-linear-system.html
+
+    """
+    y = np.zeros(b.shape[0])
+    y[0] = b[0] / l[0, 0]
+    for i in range(1, b.shape[0]):
+        _sum = np.sum(l[i, :i] * y[:i])
+        y[i] = (b[i] - _sum) / l[i, i]
+    return y
+
+
+@njit
+def backward_substitution(u, y):
+    """Solves Ux=y.
+
+    References
+    ----------
+    - https://pages.mtu.edu/~shene/COURSES/cs3621/NOTES/INT-APP/CURVE-linear-system.html
+
+    """
+    x = np.zeros(y.shape[0])
+    x[-1] = y[-1] / u[-1, -1]
+    for i in range(y.shape[0] - 2, -1, -1):
+        _sum = np.sum(u[i, i+1:] * x[i+1:])
+        x[i] = (y[i] - _sum) / u[i, i]
+
+    return x
+
+
+
 def generate_data_ols(nobs, variables):
     x, y = make_regression(n_samples=nobs, n_features=variables, n_informative=variables,
                     effective_rank=None, noise=0.4, shuffle=True, coef=False, random_state=25)
     return x, y
 
 
-#benchmarking one function
 def benchmark_one_function(data_dimensions, function):
     """Benchmarking code for various observation sizes.
     Args:
@@ -62,14 +147,12 @@ def benchmark_one_function(data_dimensions, function):
     Returns: pd.Series (len(dataset_sizes)) with dataset dinesions and timing
         for the different datasets
     """
-    print('\n\n', function.__name__)
-    
+ 
     output = []
     for nobs, nvariables in data_dimensions:
-        print(nobs, nvariables)
         x, y = generate_data_ols(nobs=nobs, variables=nvariables)
         # Start the functions with timer
-        time_taken = runtime(function, args=(x, y), duration=0.005)['median_runtime']
+        time_taken = runtime(function, args=(x, y), duration=1.0)['median_runtime']
         output.append(time_taken)
 
     time_data = np.array(output).reshape(len(output), 1)
@@ -85,13 +168,11 @@ def benchmark_one_function(data_dimensions, function):
     return df
 
 
-#func_list = [matrix_inversion_np, lstsq_np, pseudo_inverse_np, solve_np,
-#            lls_with_blas, matrix_inversion_scipy, lstsq_scipy,
-#            solve_scipy, lu_solve_scipy, cholesky_np, qr_np]
+func_list = [matrix_inversion_np, lstsq_np, pseudo_inverse_np, solve_np,
+           lls_with_blas, matrix_inversion_scipy, lstsq_scipy,
+           solve_scipy, lu_solve_scipy, cholesky_np, qr_np]
 
-func_list = [lstsq_np]
 
-#benchmark all functions
 def batch_benchmark(func_list, data_dimensions):
     """Run a batch benchark for the ols implementations.
     Args:
@@ -115,8 +196,6 @@ for dim in dim_list:
     function_names = plot_data.columns
     plot_data.reset_index(inplace=True)
 
-    print()
-
     for col in ['nobs', 'nvariables']:
         if len(plot_data[col].unique()) == 1:
             reduced_data = plot_data.drop(col, axis=1)
@@ -125,19 +204,17 @@ for dim in dim_list:
 
     fig, ax = plt.subplots()
 
-    for k in [1]:
-        for funcname in function_names:
-            sns.regplot(
-                x=x_name, y=funcname, data=reduced_data, order=k,
-                label=funcname, fit_reg=True, ax=ax)
-        ax.set_xlabel(x_name, fontsize='xx-small')
-        ax.set_ylabel('Time taken', fontsize='xx-small')
-        plt.title('Ols Implementations', fontsize='x-small')
-        plt.legend(loc='center left', bbox_to_anchor=(1, 0.5), frameon=True, fontsize = 'xx-small')
-        plt.savefig("Perfomance_ols_{}_{}.png".format(x_name, k), bbox_inches='tight')
-        plt.close()
+    
+    for funcname in function_names:
+        sns.lineplot(
+            x=x_name, y=funcname, data=reduced_data,
+            label=funcname, ax=ax)
+    ax.set_xlabel(x_name, fontsize='xx-small')
+    ax.set_ylabel('Time taken', fontsize='xx-small')
+    plt.title('Ols Implementations', fontsize='x-small')
+    plt.legend(loc='center left', bbox_to_anchor=(1, 0.5), frameon=True, fontsize = 'xx-small')
+    plt.savefig("Perfomance_ols_{}.png".format(x_name), bbox_inches='tight')
+    plt.show()
+    plt.close()
 
 
-stop = time.time()
-
-print(stop - start)
