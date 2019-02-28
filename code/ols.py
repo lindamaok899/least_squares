@@ -11,7 +11,7 @@ import seaborn as sns
 from rmse import median_rmse
 
 sns.set_context('poster')
-sns.set_palette('Paired', 10)
+sns.set_palette('Paired', 11)
 sns.set_color_codes()
 
 data_dim_nobs = [(300, 30), (600, 30)]
@@ -191,47 +191,21 @@ def batch_benchmark(func_list, data_dimensions):
     return runtime_data
 
 
-dim_list = [data_dim_nobs, data_dim_vars]
-for dim in dim_list:
-    plot_data = batch_benchmark(func_list=func_list, data_dimensions=dim)
-    function_names = plot_data.columns
-    plot_data.reset_index(inplace=True)
-
-    for col in ['nobs', 'nvariables']:
-        if len(plot_data[col].unique()) == 1:
-            reduced_data = plot_data.drop(col, axis=1)
-        else:
-            x_name = col
-
-    fig, ax = plt.subplots()
-
-    
-    for funcname in function_names:
-        sns.lineplot(
-            x=x_name, y=funcname, data=reduced_data,
-            label=funcname, ax=ax)
-    ax.set_xlabel(x_name, fontsize='xx-small')
-    ax.set_ylabel('Time taken', fontsize='xx-small')
-    plt.title('Ols Implementations', fontsize='x-small')
-    plt.legend(loc='center left', bbox_to_anchor=(1, 0.5), frameon=True, fontsize = 'xx-small')
-    plt.savefig("Perfomance_ols_{}.png".format(x_name), bbox_inches='tight')
-    plt.show()
-    plt.close()
-    
+  
 nobs = 20000
 nvariables = 50
 true_beta = np.ones(nvariables)
 collinearity_strength = np.arange(0.2, 0.9999999, 0.05999999999).reshape(14,1)
 
-def rmse_one_function(function):
+def rmse_one_function(collinearity_strength, function):
     """
     
     """
     output = []
     for strength in collinearity_strength:
         x, y = generate_data(nobs=nobs, nexog=nvariables, collinearity=strength)
-        estimated_beta = solve_scipy(x, y)
-        rsme_output = median_rmse(true_beta, estimated_beta, solve_scipy, args=(x,y), duration=1.0)
+        estimated_beta = function(x, y)
+        rsme_output = median_rmse(true_beta, estimated_beta, function, args=(x,y), duration=1.0)
         output.append(rsme_output)
         
     rmse_data = np.array(output).reshape(len(output), 1)
@@ -239,13 +213,76 @@ def rmse_one_function(function):
     
     rmse_df = pd.DataFrame(
         data=all_data,
-        columns=['covariance_strength', function.__name__]
+        columns=['collinearity_strength', function.__name__]
     )
     
-    rmse_df.set_index(['coll_strength'], inplace=True)
+    rmse_df.set_index(['collinearity_strength'], inplace=True)
         
     return rmse_df
 
+def batch_rmse(collinearity_strength, func_list): 
+    """
+    
+    """
+    
+    batch_rmse = []
+    for func in func_list: 
+        output = rmse_one_function(collinearity_strength, func)
+        batch_rmse.append(output)
+        
+    batch_rmse_data = pd.concat(batch_rmse, axis=1)
+    return batch_rmse_data
 
 
+coll_strength = collinearity_strength.tolist()
+
+dim_list = [coll_strength, data_dim_nobs, data_dim_vars]
+for dim in dim_list:
+    if len(dim) == len(collinearity_strength):
+        rmse_plot_data = batch_rmse(collinearity_strength=collinearity_strength, func_list=func_list)
+        function_names = rmse_plot_data.columns
+        rmse_plot_data.reset_index(inplace=True)
+    
+        for col in ['collinearity_strength']:
+            x_name = col
+    
+        fig, ax = plt.subplots()
+    
+        
+        for funcname in function_names:
+            sns.lineplot(
+                x=x_name, y=funcname, data=rmse_plot_data,
+                label=funcname, ax=ax)
+        ax.set_xlabel(x_name, fontsize='xx-small')
+        ax.set_ylabel('Prediction Accuracy', fontsize='xx-small')
+        plt.title('Ols Implementations', fontsize='x-small')
+        plt.legend(loc='center left', bbox_to_anchor=(1, 0.5), frameon=True, fontsize = 'xx-small')
+        plt.savefig("Accuracy_ols.png".format(x_name), bbox_inches='tight')
+        plt.show()
+        plt.close()
+    else:
+        plot_data = batch_benchmark(func_list=func_list, data_dimensions=dim)
+        function_names = plot_data.columns
+        plot_data.reset_index(inplace=True)
+    
+        for col in ['nobs', 'nvariables']:
+            if len(plot_data[col].unique()) == 1:
+                reduced_data = plot_data.drop(col, axis=1)
+            else:
+                x_name = col
+    
+        fig, ax = plt.subplots()
+    
+        
+        for funcname in function_names:
+            sns.lineplot(
+                x=x_name, y=funcname, data=reduced_data,
+                label=funcname, ax=ax)
+        ax.set_xlabel(x_name, fontsize='xx-small')
+        ax.set_ylabel('Time taken', fontsize='xx-small')
+        plt.title('Ols Implementations', fontsize='x-small')
+        plt.legend(loc='center left', bbox_to_anchor=(1, 0.5), frameon=True, fontsize = 'xx-small')
+        plt.savefig("Perfomance_ols_{}.png".format(x_name), bbox_inches='tight')
+        plt.show()
+        plt.close()
 
