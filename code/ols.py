@@ -2,11 +2,13 @@ import numpy as np
 from numba import njit
 from scipy.linalg.blas import dgemm
 import scipy.linalg as sl
-from sklearn.datasets import make_regression
+#from sklearn.datasets import make_regression
 import pandas as pd
+from generate_data import generate_data
 from timing import runtime
 import matplotlib.pyplot as plt
 import seaborn as sns
+from rmse import median_rmse
 
 sns.set_context('poster')
 sns.set_palette('Paired', 10)
@@ -131,11 +133,10 @@ def backward_substitution(u, y):
 
 
 
-def generate_data_ols(nobs, variables):
-    x, y = make_regression(n_samples=nobs, n_features=variables, n_informative=variables,
-                    effective_rank=None, noise=0.4, shuffle=True, coef=False, random_state=25)
-    return x, y
-
+#def generate_data_ols(nobs, variables):
+#    x, y, true_beta = make_regression(n_samples=nobs, n_features=variables, n_informative=variables,
+#                    effective_rank=None, noise=0.4, shuffle=True, coef=True, random_state=25)
+#    return x, y, true_beta
 
 def benchmark_one_function(data_dimensions, function):
     """Benchmarking code for various observation sizes.
@@ -150,7 +151,7 @@ def benchmark_one_function(data_dimensions, function):
  
     output = []
     for nobs, nvariables in data_dimensions:
-        x, y = generate_data_ols(nobs=nobs, variables=nvariables)
+        x, y = generate_data(nobs=nobs, nexog=nvariables)
         # Start the functions with timer
         time_taken = runtime(function, args=(x, y), duration=1.0)['median_runtime']
         output.append(time_taken)
@@ -216,5 +217,35 @@ for dim in dim_list:
     plt.savefig("Perfomance_ols_{}.png".format(x_name), bbox_inches='tight')
     plt.show()
     plt.close()
+    
+nobs = 20000
+nvariables = 50
+true_beta = np.ones(nvariables)
+collinearity_strength = np.arange(0.2, 0.9999999, 0.05999999999).reshape(14,1)
+
+def rmse_one_function(function):
+    """
+    
+    """
+    output = []
+    for strength in collinearity_strength:
+        x, y = generate_data(nobs=nobs, nexog=nvariables, collinearity=strength)
+        estimated_beta = solve_scipy(x, y)
+        rsme_output = median_rmse(true_beta, estimated_beta, solve_scipy, args=(x,y), duration=1.0)
+        output.append(rsme_output)
+        
+    rmse_data = np.array(output).reshape(len(output), 1)
+    all_data = np.hstack([collinearity_strength, rmse_data])
+    
+    rmse_df = pd.DataFrame(
+        data=all_data,
+        columns=['covariance_strength', function.__name__]
+    )
+    
+    rmse_df.set_index(['coll_strength'], inplace=True)
+        
+    return rmse_df
+
+
 
 
