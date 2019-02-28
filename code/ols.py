@@ -254,12 +254,12 @@ for dim in dim_list:
                 x=x_name, y=funcname, data=rmse_plot_data,
                 label=funcname, ax=ax)
         ax.set_xlabel(x_name, fontsize='xx-small')
-        ax.set_ylabel('Prediction Accuracy', fontsize='xx-small')
+        ax.set_ylabel('Prediction inaccuracy', fontsize='xx-small')
         plt.title('Ols Implementations', fontsize='x-small')
         plt.legend(loc='center left', bbox_to_anchor=(1, 0.5), frameon=True, fontsize = 'xx-small')
         plt.savefig("Accuracy_ols.png".format(x_name), bbox_inches='tight')
-        plt.show()
-        plt.close()
+#       plt.show()
+#        plt.close()
     else:
         plot_data = batch_benchmark(func_list=func_list, data_dimensions=dim)
         function_names = plot_data.columns
@@ -278,11 +278,11 @@ for dim in dim_list:
             sns.lineplot(
                 x=x_name, y=funcname, data=reduced_data,
                 label=funcname, ax=ax)
-        ax.set_xlabel(x_name, fontsize='xx-small')
-        ax.set_ylabel('Time taken', fontsize='xx-small')
-        plt.title('Ols Implementations', fontsize='x-small')
-        plt.legend(loc='center left', bbox_to_anchor=(1, 0.5), frameon=True, fontsize = 'xx-small')
-        plt.savefig("Perfomance_ols_{}.png".format(x_name), bbox_inches='tight')
-        plt.show()
-        plt.close()
+    ax.set_xlabel(x_name, fontsize='xx-small')
+    ax.set_ylabel('Time taken', fontsize='xx-small')
+    plt.title('Ols Implementations', fontsize='x-small')
+    plt.legend(loc='center left', bbox_to_anchor=(1, 0.5), frameon=True, fontsize = 'xx-small')
+    plt.savefig("Perfomance_ols_{}.png".format(x_name), bbox_inches='tight')
+    plt.show()
+    plt.close()
 
