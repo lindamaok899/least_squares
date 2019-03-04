@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+from statsmodels.stats.correlation_tools import cov_nearest
 
 def generate_data(nobs, nexog, nendog=0, ninstruments=0, collinearity=0.2, endogeneity=0.1, instr_strength=0.3, beta=None):
     """Generate data for ols or iv estimation.
@@ -72,18 +73,24 @@ def _generate_cov_matrix(nexog, nendog, ninstruments, collinearity, endogeneity,
     cov = np.zeros((len(cols), len(cols)))
     upper_indices = np.triu_indices(len(cols), k=1)
     nupper = len(upper_indices[0])
-    cov[upper_indices] = np.random.uniform(low=0.0, high=0.1, size=nupper)
-    #cov[upper_indices] = np.random.uniform(low=-0.1, high=0.1, size=nupper)
+    cov[upper_indices] = np.random.uniform(low=-0, high=0.1, size=nupper)
     cov_df = pd.DataFrame(data=cov, columns=cols, index=cols)
+    cov_df.loc['exog_0', 'exog_1'] = collinearity
+    higher_weight = 0.5 + 0.5*(1-collinearity)
+    lower_weight = 0.5 - 0.5*(1-collinearity)
+    cov_df.loc['exog_0', cols[2:]] = higher_weight*cov_df.loc['exog_0', cols[2:]
+    ] + lower_weight*cov_df.loc['exog_1', cols[2:]]
+    cov_df.loc['exog_1', cols[2:]] = higher_weight*cov_df.loc['exog_1', cols[2:]
+    ] + lower_weight*cov_df.loc['exog_0', cols[2:]]
     cov_df.loc[exog_names + instr_names, 'epsilon'] = 0
     cov_df.loc[endog_names, instr_names] = instr_strength
     cov_df.loc[endog_names, 'epsilon'] = endogeneity
-    cov_df.loc['exog_0', 'exog_1'] = collinearity
     
     cov = cov_df.values
     
     cov += cov.T
     cov[np.diag_indices(len(cols))] = 1
+    cov = cov_nearest(cov, method='nearest', threshold=1e-10, n_fact=1000)
     return cov
 
 

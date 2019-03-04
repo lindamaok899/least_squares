@@ -20,7 +20,7 @@ def lstsq_np(x, y):
 
 
 def pseudo_inverse_np(x, y):
-    beta = np.dot(np.linalg.pinv(x), y)
+    beta = np.dot(np.linalg.pinv(x.T.dot(x)), x.T.dot(y))
     return beta
 
 
@@ -53,7 +53,7 @@ def matrix_inversion_scipy(x, y):
 
 
 def lstsq_scipy(x, y):
-    beta = np.linalg.lstsq(x, y)[0]
+    beta = sl.lstsq(x, y)[0]
     return beta
 
 #pseudo inverse implementation scipy was too slow and is not included in the plot

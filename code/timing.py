@@ -46,6 +46,17 @@ def runtime(func, args=(), duration=1.0):
 
 
 def core_timer(func, args=(), num_iter=1):
+    """Gets the initial runtime data for functions.
+        Args:
+            func (function): The function that is timed.
+            args (tuple): The arguments with which the function is called.
+            num_iter (float): number of iterations, default is one.
+            
+        Returns:
+            runtimes (float): runtime unit for each function passed in.           
+    
+    """
+    
     runtimes = []
     for i in range(num_iter):
         start = time.perf_counter()
@@ -61,6 +72,15 @@ def core_timer(func, args=(), num_iter=1):
 
 
 def find_good_unit(time):
+    """Finds appropriate representational units of time.
+    Args:
+        time (float): time for which a unit needs to be assigned.
+    
+    Returns: 
+        time (float): time adjusted to appropriate unit.
+    
+    """
+    
     prefixes = ['', 'milli', 'micro', 'nano', 'pico', 'femto', 'atto']
     idx = 0
     while time < 1:
