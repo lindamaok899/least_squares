@@ -16,7 +16,7 @@ sns.set_color_codes()
 
 #inputs
 nobs = 5000
-nendog=2
+nendog= 10
 instr_strength = 0.99999
 #over identified case
 ninstruments = 10
@@ -37,7 +37,7 @@ def time_one_function(data_dimensions, function):
     """
 
     output = []
-    for nobs, nvariables in data_dimensions:
+    for nobs, nvariables, ninstruments in data_dimensions:
         x, y, z = generate_data(nobs=nobs, nexog=nvariables, instr_strength=instr_strength,
                                 ninstruments=ninstruments)
         w = weighting_matrix(z)
@@ -49,9 +49,9 @@ def time_one_function(data_dimensions, function):
 
     all_data = np.hstack([data_dimensions, time_data])
 
-    df = pd.DataFrame(data=all_data, columns=["nobs", "nvariables", function.__name__])
+    df = pd.DataFrame(data=all_data, columns=["nobs", "nvariables", "ninstruments", function.__name__])
 
-    df.set_index(["nobs", "nvariables"], inplace=True)
+    df.set_index(["nobs", "nvariables", "ninstruments"], inplace=True)
 
     return df
 
@@ -93,7 +93,7 @@ def generate_plots(data, x_name, y_label):
 
     ax.set_xlabel(x_name, fontsize="xx-small")
     ax.set_ylabel(y_label, fontsize="xx-small")
-    plt.title("IV    Implementations", fontsize="x-small")
+    plt.title("IV Implementations", fontsize="x-small")
     plt.legend(
         loc="center left", bbox_to_anchor=(1, 0.5), frameon=True, fontsize="xx-small"
     )
@@ -114,10 +114,11 @@ nvariables_list = list(range(5, 55, 5))
 
 nistruments_list = list(range(10, 35, 3))
 
-data_dim_vars = [(5000, n) for n in nvariables_list]
+data_dim_vars = [(5000, n, 10) for n in nvariables_list]
 
-data_dim_nobs = [(n, 30) for n in nobs_list]
+data_dim_nobs = [(n, 30, 10) for n in nobs_list]
 
+data_dim_instr = [(3000, 30, n) for n in nistruments_list]
 
 
 
@@ -136,19 +137,21 @@ func_list = [
 ]
 
 
-dim_list = [data_dim_nobs, data_dim_vars]
+dim_list = [data_dim_nobs, data_dim_vars, data_dim_instr]
 
-for dim in dim_list:
+for i, dim in enumerate(dim_list):
     plot_data = batch_timing(func_list=func_list, data_dimensions=dim)
     plot_data.reset_index(inplace=True)
-    for col in ["nobs", "nvariables"]:
-        if len(plot_data[col].unique()) == 1:
-            reduced_data = plot_data.drop(col, axis=1)
-        else:
-            x_name = col
-
+    reduced_data = pd.concat([plot_data.iloc[:, i], plot_data.iloc[:, 3:]], axis=1)
+    x_name = reduced_data.columns[0]
     fig = generate_plots(data=reduced_data, x_name=x_name, y_label="Runtime")
-
+    
     plt.savefig("../bld/Perfomance_iv_{}.png".format(x_name), bbox_inches="tight")
     plt.close()
+
+        
+   
+
+
+    
 
