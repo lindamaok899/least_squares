@@ -10,8 +10,6 @@ from iv import lls_with_blas, matrix_inversion_scipy, lstsq_scipy, solve_scipy
 from iv import lu_solve_scipy, cholesky_np, qr_np, weighting_matrix
 from sklearn.metrics import mean_squared_error as mse
 
-# from statsmodels.tools.eval_measures import rmse
-
 if not os.path.exists("../bld"):
     os.mkdir("../bld")
 
@@ -22,10 +20,10 @@ sns.set_color_codes()
 
 def time_one_function(data_dimensions, function):
     """Benchmarking code for various observation and variable sizes for one 
-        ols implementation.
+        iv implementation.
     Args:
         data_dimension(array): different observation sizes (nobs, variables, instruments).
-        function (function): the ols implementation to be benchmarked.
+        function (function): the iv implementation to be benchmarked.
     Returns: pd.DataFrame (len(dataset_sizes)) with dataset dimesions and timing
         for the different datasets.
     """
@@ -59,13 +57,13 @@ def time_one_function(data_dimensions, function):
 
 
 def batch_timing(func_list, data_dimensions):
-    """Run a batch benchark for the ols implementations.
+    """Run a batch benchark for the iv implementations.
     Args:
-        funct_list (list): List of ols implementations from ols.py.
+        funct_list (list): List of iv implementations from iv.py.
         data_dimensions (list): List of nobs, nvariables for which the functions
             will be timed.
     Returns:
-        runtime_data (pd.DataFrame): runtime data for all ols implementations.
+        runtime_data (pd.DataFrame): runtime data for all iv implementations.
     """
     batch_data = []
     for func in func_list:
@@ -77,7 +75,7 @@ def batch_timing(func_list, data_dimensions):
 
 
 def rmse_one_function(collinearities, function, nobs, nexog, num_iter):
-    """Benchmark the accuracy of one ols implementation for different
+    """Benchmark the accuracy of one iv implementation for different
         observations and variable sizes.
     Args:
         collinearities (array): ndarray of correlation between exogenous x variables 
@@ -123,13 +121,13 @@ def rmse_one_function(collinearities, function, nobs, nexog, num_iter):
 
 
 def batch_rmse(collinearities, func_list, nobs, nexog, num_iter=20):
-    """Benchmark the accuracy of all ols implementations using datasets with varying
+    """Benchmark the accuracy of all iv implementations using datasets with varying
         collinearity levels.
         
     Args:
         collinearities (array): ndarray of correlation between exogenous x variables 
             scaled between  0.2 and 1.
-        func_list (list): List of ols implementations from ols.py. 
+        func_list (list): List of iv implementations from iv.py. 
         nobs (int): number of observations.
         nexog (int): number of exogenous x variables.
         num_iter (int): number of iterations.
