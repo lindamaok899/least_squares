@@ -2,17 +2,19 @@ import numpy as np
 from numba import njit
 from scipy.linalg.blas import dgemm
 import scipy.linalg as sl
-#from generate_data import generate_data
+
+# from generate_data import generate_data
 
 """Define different implementations of IV.
 
 Each implementation returns the estimated parameter vector.
 
 """
-#inputs 
+# inputs
 nobs = 5000
 nvariables = 10
-#x, y, z = generate_data(nobs=nobs, nexog=nvariables, nendog=2, ninstruments=5)
+# x, y, z = generate_data(nobs=nobs, nexog=nvariables, nendog=2, ninstruments=5)
+
 
 def weighting_matrix(z):
     nobs, k_prime = z.shape
@@ -28,6 +30,7 @@ def matrix_inversion_np(x, y, z, w):
     beta = inverse_part.dot(y_part)
     return beta
 
+
 def lstsq_np(x, y, z, w):
     xTz = x.T.dot(z)
     helper = xTz.dot(w)
@@ -35,6 +38,7 @@ def lstsq_np(x, y, z, w):
     y_part = helper.dot(z.T.dot(y))
     beta = np.linalg.lstsq(inverse_part, y_part, rcond=None)[0]
     return beta
+
 
 def pseudo_inverse_np(x, y, z, w):
     xTz = x.T.dot(z)
@@ -44,13 +48,15 @@ def pseudo_inverse_np(x, y, z, w):
     beta = np.dot(np.linalg.pinv(inverse_part), y_part)
     return beta
 
-def solve_np(x,y, z, w):
+
+def solve_np(x, y, z, w):
     xTz = x.T.dot(z)
     helper = xTz.dot(w)
     inverse_part = np.dot(helper, xTz.T)
     y_part = helper.dot(z.T.dot(y))
     beta = np.linalg.solve(inverse_part, y_part)
     return beta
+
 
 def lls_with_blas(x, y, z, w, residuals=False):
     """
@@ -64,6 +70,7 @@ def lls_with_blas(x, y, z, w, residuals=False):
     beta = np.linalg.solve(i, dgemm(alpha=1.0, a=inverse_part, b=y_part)).flatten()
     return beta
 
+
 def cholesky_np(x, y, z, w):
     xTz = x.T.dot(z)
     helper = xTz.dot(w)
@@ -74,6 +81,7 @@ def cholesky_np(x, y, z, w):
     beta = backward_substitution(l.T, c)
     return beta
 
+
 def qr_np(x, y, z, w):
     xTz = x.T.dot(z)
     helper = xTz.dot(w)
@@ -83,6 +91,7 @@ def qr_np(x, y, z, w):
     beta = np.linalg.inv(r).dot(q.T.dot(y_part))
     return beta
 
+
 def matrix_inversion_scipy(x, y, z, w):
     xTz = x.T.dot(z)
     helper = xTz.dot(w)
@@ -90,6 +99,7 @@ def matrix_inversion_scipy(x, y, z, w):
     y_part = helper.dot(z.T.dot(y))
     beta = sl.inv(inverse_part).dot(y_part)
     return beta
+
 
 def lstsq_scipy(x, y, z, w):
     xTz = x.T.dot(z)
@@ -99,7 +109,9 @@ def lstsq_scipy(x, y, z, w):
     beta = sl.lstsq(inverse_part, y_part)[0]
     return beta
 
-#pseudo inverse implementation scipy was too slow and is not included in the plot
+
+# pseudo inverse implementation scipy was too slow and is not included in the plot
+
 
 def solve_scipy(x, y, z, w):
     xTz = x.T.dot(z)
@@ -119,7 +131,8 @@ def lu_solve_scipy(x, y, z, w):
     beta = sl.lu_solve((lu, piv), y_part @ inverse_part)
     return beta
 
-#Helper functions for numpy cholesky decomposition
+
+# Helper functions for numpy cholesky decomposition
 @njit
 def forward_substitution(l, b):
     """Solves Ly=b.
@@ -152,7 +165,7 @@ def backward_substitution(u, y):
     x = np.zeros(y.shape[0])
     x[-1] = y[-1] / u[-1, -1]
     for i in range(y.shape[0] - 2, -1, -1):
-        _sum = np.sum(u[i, i+1:] * x[i+1:])
+        _sum = np.sum(u[i, i + 1 :] * x[i + 1 :])
         x[i] = (y[i] - _sum) / u[i, i]
 
     return x

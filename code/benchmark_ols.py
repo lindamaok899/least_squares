@@ -81,7 +81,7 @@ def rmse_one_function(collinearities, function, nobs, nexog, num_iter):
         estimated beta.
         
     """
-    
+
     true_beta = np.ones(nexog)
     median_mse_list = []
     for col in collinearities:
@@ -154,14 +154,18 @@ def generate_plots(data, x_name, y_label):
     plt.legend(
         loc="center left", bbox_to_anchor=(1, 0.5), frameon=True, fontsize="xx-small"
     )
-    
+
     return fig
 
 
 # ======================================================================================
-# timing plots
+# inputs
 # ======================================================================================
 np.random.seed(5471)
+
+nobs = 5000
+nvariables = 10
+collinearities = np.arange(0.2, 0.99, 0.02)
 
 nobs_list = (
     list(range(200, 2000, 200))
@@ -189,7 +193,9 @@ func_list = [
     qr_np,
 ]
 
-
+# ======================================================================================
+# timing plots
+# ======================================================================================
 dim_list = [data_dim_nobs, data_dim_vars]
 for dim in dim_list:
     plot_data = batch_timing(func_list=func_list, data_dimensions=dim)
@@ -209,11 +215,6 @@ for dim in dim_list:
 # ======================================================================================
 # Accurracy plots
 # ======================================================================================
-
-nobs = 5000
-nvariables = 10
-collinearities = np.arange(0.2, 0.99, 0.02)
-
 rmse_plot_data = batch_rmse(
     collinearities=collinearities,
     func_list=func_list,

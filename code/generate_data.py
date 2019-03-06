@@ -2,7 +2,17 @@ import numpy as np
 import pandas as pd
 from statsmodels.stats.correlation_tools import cov_nearest
 
-def generate_data(nobs, nexog, nendog=0, ninstruments=0, collinearity=0.2, endogeneity=0.1, instr_strength=0.3, beta=None):
+
+def generate_data(
+    nobs,
+    nexog,
+    nendog=0,
+    ninstruments=0,
+    collinearity=0.2,
+    endogeneity=0.1,
+    instr_strength=0.3,
+    beta=None,
+):
     """Generate data for ols or iv estimation.
     
     
@@ -23,74 +33,79 @@ def generate_data(nobs, nexog, nendog=0, ninstruments=0, collinearity=0.2, endog
             ninstruments > 0
     
     """
-    assert ninstruments >= nendog, (
-        'You need at least as many instruments as endogenous x variables.')
-    
-    assert nexog >= 2, (
-        'You need at least two exogenous variables')
-    
-    assert collinearity >= 0.2, (
-        'The minimum level of collinearity is 0.2.')
-    
-    cov = _generate_cov_matrix(nexog, nendog, ninstruments, collinearity, endogeneity, instr_strength)
+    assert (
+        ninstruments >= nendog
+    ), "You need at least as many instruments as endogenous x variables."
+
+    assert nexog >= 2, "You need at least two exogenous variables"
+
+    assert collinearity >= 0.2, "The minimum level of collinearity is 0.2."
+
+    cov = _generate_cov_matrix(
+        nexog, nendog, ninstruments, collinearity, endogeneity, instr_strength
+    )
     means = _generate_means(nexog, nendog, ninstruments)
-    
+
     if beta is None:
         beta = np.ones(nexog + nendog)
-    
-    
+
     raw_data = np.random.multivariate_normal(mean=means, cov=cov, size=nobs)
-    
+
     exog_names, endog_names, instr_names = _variable_names(nexog, nendog, ninstruments)
-    
-    cols = exog_names + endog_names + instr_names + ['epsilon']
-    
+
+    cols = exog_names + endog_names + instr_names + ["epsilon"]
+
     df = pd.DataFrame(data=raw_data, columns=cols)
     x = df[exog_names + endog_names].values
     z = df[exog_names + instr_names].values
-    epsilon = df['epsilon'].values
-    
+    epsilon = df["epsilon"].values
+
     y = np.dot(x, beta) + epsilon
-    
+
     if ninstruments >= 1:
         return x, y, z
     else:
         return x, y
-    
-    
+
+
 def _variable_names(nexog, nendog, ninstruments):
-    exog_names = ['exog_{}'.format(i) for i in range(nexog)]
-    endog_names = ['endog_{}'.format(i) for i in range(nendog)]
-    instr_names = ['instr_{}'.format(i) for i in range(ninstruments)]
+    exog_names = ["exog_{}".format(i) for i in range(nexog)]
+    endog_names = ["endog_{}".format(i) for i in range(nendog)]
+    instr_names = ["instr_{}".format(i) for i in range(ninstruments)]
     return exog_names, endog_names, instr_names
-    
-    
-def _generate_cov_matrix(nexog, nendog, ninstruments, collinearity, endogeneity, instr_strength):
+
+
+def _generate_cov_matrix(
+    nexog, nendog, ninstruments, collinearity, endogeneity, instr_strength
+):
     exog_names, endog_names, instr_names = _variable_names(nexog, nendog, ninstruments)
-    cols = exog_names + endog_names + instr_names + ['epsilon']
-    
-    
+    cols = exog_names + endog_names + instr_names + ["epsilon"]
+
     cov = np.zeros((len(cols), len(cols)))
     upper_indices = np.triu_indices(len(cols), k=1)
     nupper = len(upper_indices[0])
     cov[upper_indices] = np.random.uniform(low=-0, high=0.1, size=nupper)
     cov_df = pd.DataFrame(data=cov, columns=cols, index=cols)
-    cov_df.loc['exog_0', 'exog_1'] = collinearity
-    higher_weight = 0.5 + 0.5*(1-collinearity)
-    lower_weight = 0.5 - 0.5*(1-collinearity)
-    cov_df.loc['exog_0', cols[2:]] = higher_weight*cov_df.loc['exog_0', cols[2:]
-    ] + lower_weight*cov_df.loc['exog_1', cols[2:]]
-    cov_df.loc['exog_1', cols[2:]] = higher_weight*cov_df.loc['exog_1', cols[2:]
-    ] + lower_weight*cov_df.loc['exog_0', cols[2:]]
-    cov_df.loc[exog_names + instr_names, 'epsilon'] = 0
+    cov_df.loc["exog_0", "exog_1"] = collinearity
+    higher_weight = 0.5 + 0.5 * (1 - collinearity)
+    lower_weight = 0.5 - 0.5 * (1 - collinearity)
+    cov_df.loc["exog_0", cols[2:]] = (
+        higher_weight * cov_df.loc["exog_0", cols[2:]]
+        + lower_weight * cov_df.loc["exog_1", cols[2:]]
+    )
+    cov_df.loc["exog_1", cols[2:]] = (
+        higher_weight * cov_df.loc["exog_1", cols[2:]]
+        + lower_weight * cov_df.loc["exog_0", cols[2:]]
+    )
+    cov_df.loc[exog_names + instr_names, "epsilon"] = 0
     cov_df.loc[endog_names, instr_names] = instr_strength
-    cov_df.loc[endog_names, 'epsilon'] = endogeneity
-    
+    cov_df.loc[endog_names, "epsilon"] = endogeneity
+
     cov = cov_df.values
-    
+
     cov += cov.T
     cov[np.diag_indices(len(cols))] = 1
-    cov = cov_nearest(cov, method='nearest', threshold=1e-10, n_fact=1000)
+    cov = cov_nearest(cov, method="nearest", threshold=1e-10, n_fact=2)
     return cov
 
 

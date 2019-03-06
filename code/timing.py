@@ -22,7 +22,7 @@ def runtime(func, args=(), duration=1.0):
 
     """
     t_zero = core_timer(func, args, 2)[1]
-    small_time = time.get_clock_info('perf_counter').resolution
+    small_time = time.get_clock_info("perf_counter").resolution
     iter_guess = max(1, math.floor(duration / max(t_zero, small_time)))
 
     if iter_guess >= 100:
@@ -35,12 +35,12 @@ def runtime(func, args=(), duration=1.0):
     median_runtime = np.median(runtimes)
 
     runtime_dict = {
-        'average_runtime': avg_runtime,
-        'median_runtime': np.median(runtimes),
-        'runtimes': runtimes,
-        'standard_deviation': np.std(runtimes),
-        'repetitions': num_iter,
-        'string': find_good_unit(median_runtime)
+        "average_runtime": avg_runtime,
+        "median_runtime": np.median(runtimes),
+        "runtimes": runtimes,
+        "standard_deviation": np.std(runtimes),
+        "repetitions": num_iter,
+        "string": find_good_unit(median_runtime),
     }
     return runtime_dict
 
@@ -56,7 +56,7 @@ def core_timer(func, args=(), num_iter=1):
             runtimes (float): runtime unit for each function passed in.           
     
     """
-    
+
     runtimes = []
     for i in range(num_iter):
         start = time.perf_counter()
@@ -80,12 +80,12 @@ def find_good_unit(time):
         time (float): time adjusted to appropriate unit.
     
     """
-    
-    prefixes = ['', 'milli', 'micro', 'nano', 'pico', 'femto', 'atto']
+
+    prefixes = ["", "milli", "micro", "nano", "pico", "femto", "atto"]
     idx = 0
     while time < 1:
         time *= 1000
         idx += 1
 
     time = np.round(time, 2)
-    return 'The median runtime is {} {}seconds'.format(time, prefixes[idx])
+    return "The median runtime is {} {}seconds".format(time, prefixes[idx])
