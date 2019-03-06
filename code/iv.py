@@ -3,17 +3,11 @@ from numba import njit
 from scipy.linalg.blas import dgemm
 import scipy.linalg as sl
 
-# from generate_data import generate_data
-
 """Define different implementations of IV.
 
 Each implementation returns the estimated parameter vector.
 
 """
-# inputs
-nobs = 5000
-nvariables = 10
-# x, y, z = generate_data(nobs=nobs, nexog=nvariables, nendog=2, ninstruments=5)
 
 
 def weighting_matrix(z):
