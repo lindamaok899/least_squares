@@ -164,8 +164,8 @@ def generate_plots(data, x_name, y_label):
 np.random.seed(5471)
 
 nobs = 5000
+
 nvariables = 10
-collinearities = np.arange(0.2, 0.99, 0.02)
 
 nobs_list = (
     list(range(200, 2000, 200))
@@ -173,9 +173,11 @@ nobs_list = (
     + list(range(10000, 20000, 2000))
 )
 
-data_dim_nobs = [(n, 30) for n in nobs_list]
+collinearities = np.arange(0.2, 0.99, 0.02)
 
 nvariables_list = list(range(5, 55, 5))
+
+data_dim_nobs = [(n, 30) for n in nobs_list]
 
 data_dim_vars = [(5000, n) for n in nvariables_list]
 
