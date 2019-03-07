@@ -14,7 +14,7 @@ sns.set_context("poster")
 sns.set_palette("Paired", 11)
 sns.set_color_codes()
 
-np.random.seed(9471)
+np.random.seed(20000)
 
 if not os.path.exists("../bld"):
     os.mkdir("../bld")
