@@ -111,9 +111,9 @@ def rmse_one_function(accuracy_data, function, nobs, nexog, num_iter):
             estimated_beta = function(x, y, z, w)
             mse_list.append(mse(true_beta, estimated_beta))
         median_mse_list.append(np.median(mse_list))
-    
+
     median_data = np.array(median_mse_list).reshape(len(median_mse_list), 1)
-    
+
     data = np.hstack([accuracy_data, median_data])
 
     rmse_df = pd.DataFrame(
@@ -220,7 +220,6 @@ accuracy_collinearities = [(n, 5) for n in collinearities]
 accuracy_nistruments = [(0.2, n) for n in nistruments_list]
 
 
-
 func_list = [
     matrix_inversion_np,
     lstsq_np,
@@ -258,12 +257,12 @@ accuracy_list = [accuracy_collinearities, accuracy_nistruments]
 
 for accuracy in accuracy_list:
     plot_data = batch_rmse(
-    accuracy_data=accuracy,
-    func_list=func_list,
-    nobs=nobs,
-    nexog=nvariables,
-    num_iter=10,
-)
+        accuracy_data=accuracy,
+        func_list=func_list,
+        nobs=nobs,
+        nexog=nvariables,
+        num_iter=10,
+    )
     plot_data.reset_index(inplace=True)
 
     for col in ["collinearity_strength", "instruments"]:
@@ -271,8 +270,8 @@ for accuracy in accuracy_list:
             reduced_data = plot_data.drop(col, axis=1)
         else:
             x_name = col
-    
+
     fig = generate_plots(data=reduced_data, x_name=x_name, y_label="Inaccuracy")
-    
+
     plt.savefig("../bld/Accuracy_iv_{}.png".format(x_name), bbox_inches="tight")
     plt.close()
