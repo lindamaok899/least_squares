@@ -1,10 +1,6 @@
 # least_squares
 Benchmark different algorithms for least squares and instrumental variable estimators
 
-This package implements an algorithm that first identifies and downloads all content pages that contain protocols of the "Prime Minister Questions" (PMQ) of the UK Parliament and then scrapes these pages to obtain all questions and responses.
-The final product of this project is to produce a long dataset that contains information on the speaker, the contribution type (question or response) and the question/speech itself for all dates at which PMQ (potentially) could have taken place from 1979 until today.
-
-
 Introduction
 ------------
 
