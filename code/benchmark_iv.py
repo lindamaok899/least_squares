@@ -17,7 +17,7 @@ sns.set_context("poster")
 sns.set_palette("Paired", 11)
 sns.set_color_codes()
 
-np.random.seed(9471)
+np.random.seed(20000)
 
 
 def time_one_function(data_dimensions, function):
@@ -183,7 +183,7 @@ def generate_plots(data, x_name, y_label):
 # ======================================================================================
 # Inputs
 # ======================================================================================
-nobs = 5000
+nobs = 3000
 
 nvariables = 10
 

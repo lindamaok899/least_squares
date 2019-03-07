@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 from statsmodels.stats.correlation_tools import cov_nearest
 
+np.random.seed(20000)
 
 def generate_data(
     nobs,
@@ -45,10 +46,10 @@ def generate_data(
         nexog, nendog, ninstruments, collinearity, endogeneity, instr_strength
     )
     means = _generate_means(nexog, nendog, ninstruments)
-
+    
     if beta is None:
         beta = np.ones(nexog + nendog)
-
+        
     raw_data = np.random.multivariate_normal(mean=means, cov=cov, size=nobs)
 
     exog_names, endog_names, instr_names = _variable_names(nexog, nendog, ninstruments)
@@ -80,7 +81,7 @@ def _generate_cov_matrix(
 ):
     exog_names, endog_names, instr_names = _variable_names(nexog, nendog, ninstruments)
     cols = exog_names + endog_names + instr_names + ["epsilon"]
-
+    
     cov = np.zeros((len(cols), len(cols)))
     upper_indices = np.triu_indices(len(cols), k=1)
     nupper = len(upper_indices[0])
@@ -105,7 +106,7 @@ def _generate_cov_matrix(
 
     cov += cov.T
     cov[np.diag_indices(len(cols))] = 1
-    cov = cov_nearest(cov, method="nearest", threshold=1e-10, n_fact=1000)
+    cov = cov_nearest(cov, method="nearest", threshold=1e-10, n_fact=10)
     return cov
 
 
