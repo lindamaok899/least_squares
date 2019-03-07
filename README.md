@@ -6,7 +6,7 @@ Introduction
 
 The goal of this project is to benchmark different ols and iv implementations. There are two aspects to the project, one is to see how different implementations perform when 
 the number of observations, variables and instruments increase and the other aspect is to see how accurate the estimator of different implementations become when there exists
-data issues like collinearity and weak instruments and efficiency issues like how many instruments to include to effectively tackle an endogeneity in the data (just identified 
+data issues like collinearity and weak instruments and efficiency issues like how many instruments to include to effectively tackle endogeneity in the data (just identified 
 or over-identified iv). Perfomance is defined as the time it takes for the implementation(s) to be executed.
 
 
