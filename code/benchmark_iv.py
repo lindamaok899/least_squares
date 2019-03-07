@@ -17,10 +17,12 @@ sns.set_context("poster")
 sns.set_palette("Paired", 11)
 sns.set_color_codes()
 
+np.random.seed(9471)
+
 
 def time_one_function(data_dimensions, function):
-    """Benchmarking code for various observation and variable sizes for one 
-        iv implementation.
+    """Benchmarking code for various observation and variable sizes as well as
+    different number of instrumental variables for one iv implementation.
     Args:
         data_dimension(array): different observation sizes (nobs, variables, instruments).
         function (function): the iv implementation to be benchmarked.
@@ -33,6 +35,7 @@ def time_one_function(data_dimensions, function):
         x, y, z = generate_data(
             nobs=nobs,
             nexog=nvariables,
+            nendog=ninstruments,
             instr_strength=instr_strength,
             ninstruments=ninstruments,
         )
@@ -60,8 +63,8 @@ def batch_timing(func_list, data_dimensions):
     """Run a batch benchark for the iv implementations.
     Args:
         funct_list (list): List of iv implementations from iv.py.
-        data_dimensions (list): List of nobs, nvariables for which the functions
-            will be timed.
+        data_dimensions (list): List of nobs, nvariables, ninstruments for 
+        which the functions will be timed.
     Returns:
         runtime_data (pd.DataFrame): runtime data for all iv implementations.
     """
@@ -74,12 +77,12 @@ def batch_timing(func_list, data_dimensions):
     return runtime_data
 
 
-def rmse_one_function(collinearities, function, nobs, nexog, num_iter):
+def rmse_one_function(accuracy_data, function, nobs, nexog, num_iter):
     """Benchmark the accuracy of one iv implementation for different
-        observations and variable sizes.
+        observations, variable sizes as well as varied number of instruments.
     Args:
-        collinearities (array): ndarray of correlation between exogenous x variables 
-            scaled between  0.2 and 1.
+        accuracy_data (array): ndarray different accuracy measures
+            (collinearity, ninstruments).
         function (function): the iv function for which accuracy is benchmarked.
         nobs (int): number of observations.
         nexog (int): number of exogenous x variables.
@@ -93,7 +96,7 @@ def rmse_one_function(collinearities, function, nobs, nexog, num_iter):
 
     true_beta = np.ones(nexog + nendog)
     median_mse_list = []
-    for col in collinearities:
+    for collinearities, instruments in accuracy_data:
         mse_list = []
         for i in range(num_iter):
             x, y, z = generate_data(
@@ -101,32 +104,34 @@ def rmse_one_function(collinearities, function, nobs, nexog, num_iter):
                 nexog=nvariables,
                 nendog=ninstruments,
                 instr_strength=instr_strength,
-                ninstruments=ninstruments,
-                collinearity=col,
+                ninstruments=instruments,
+                collinearity=collinearities,
             )
             w = weighting_matrix(z)
             estimated_beta = function(x, y, z, w)
             mse_list.append(mse(true_beta, estimated_beta))
         median_mse_list.append(np.median(mse_list))
-
-    data = np.vstack([collinearities, median_mse_list]).T
+    
+    median_data = np.array(median_mse_list).reshape(len(median_mse_list), 1)
+    
+    data = np.hstack([accuracy_data, median_data])
 
     rmse_df = pd.DataFrame(
-        data=data, columns=["collinearity_strength", function.__name__]
+        data=data, columns=["collinearity_strength", "instruments", function.__name__]
     )
 
-    rmse_df.set_index(["collinearity_strength"], inplace=True)
+    rmse_df.set_index(["collinearity_strength", "instruments"], inplace=True)
 
     return rmse_df
 
 
-def batch_rmse(collinearities, func_list, nobs, nexog, num_iter=20):
+def batch_rmse(accuracy_data, func_list, nobs, nexog, num_iter=20):
     """Benchmark the accuracy of all iv implementations using datasets with varying
         collinearity levels.
         
     Args:
-        collinearities (array): ndarray of correlation between exogenous x variables 
-            scaled between  0.2 and 1.
+        accuracy_data (array): ndarray different accuracy measures
+            (collinearity, ninstruments).
         func_list (list): List of iv implementations from iv.py. 
         nobs (int): number of observations.
         nexog (int): number of exogenous x variables.
@@ -140,7 +145,7 @@ def batch_rmse(collinearities, func_list, nobs, nexog, num_iter=20):
 
     batch_rmse = []
     for func in func_list:
-        output = rmse_one_function(collinearities, func, nobs, nexog, num_iter)
+        output = rmse_one_function(accuracy_data, func, nobs, nexog, num_iter)
         batch_rmse.append(output)
 
     batch_rmse_data = pd.concat(batch_rmse, axis=1)
@@ -178,15 +183,13 @@ def generate_plots(data, x_name, y_label):
 # ======================================================================================
 # Inputs
 # ======================================================================================
-np.random.seed(5471)
-
 nobs = 5000
 
 nvariables = 10
 
 nendog = 5
 
-instr_strength = 0.9
+instr_strength = 0.8
 
 # just identified case
 ninstruments = 5
@@ -202,15 +205,21 @@ nobs_list = (
 
 nvariables_list = list(range(5, 55, 5))
 
-nistruments_list = list(range(10, 35, 3))
+nistruments_list = list(range(5, 50, 5))
 
-collinearities = np.arange(0.2, 0.99, 0.02)
+collinearities = list(np.arange(0.2, 0.8, 0.02))
 
 data_dim_vars = [(5000, n, 10) for n in nvariables_list]
 
 data_dim_nobs = [(n, 30, 10) for n in nobs_list]
 
 data_dim_instr = [(3000, 30, n) for n in nistruments_list]
+
+accuracy_collinearities = [(n, 5) for n in collinearities]
+
+accuracy_nistruments = [(0.2, n) for n in nistruments_list]
+
+
 
 func_list = [
     matrix_inversion_np,
@@ -245,18 +254,25 @@ for i, dim in enumerate(dim_list):
 # ======================================================================================
 # Accurracy plots
 # ======================================================================================
-rmse_plot_data = batch_rmse(
-    collinearities=collinearities,
+accuracy_list = [accuracy_collinearities, accuracy_nistruments]
+
+for accuracy in accuracy_list:
+    plot_data = batch_rmse(
+    accuracy_data=accuracy,
     func_list=func_list,
     nobs=nobs,
     nexog=nvariables,
     num_iter=10,
 )
-function_names = rmse_plot_data.columns
-rmse_plot_data.reset_index(inplace=True)
+    plot_data.reset_index(inplace=True)
 
-x_name = "collinearity_strength"
-
-fig = generate_plots(data=rmse_plot_data, x_name=x_name, y_label="Inaccuracy")
-plt.savefig("../bld/Accuracy_iv.png".format(x_name), bbox_inches="tight")
-plt.close()
+    for col in ["collinearity_strength", "instruments"]:
+        if len(plot_data[col].unique()) == 1:
+            reduced_data = plot_data.drop(col, axis=1)
+        else:
+            x_name = col
+    
+    fig = generate_plots(data=reduced_data, x_name=x_name, y_label="Inaccuracy")
+    
+    plt.savefig("../bld/Accuracy_iv_{}.png".format(x_name), bbox_inches="tight")
+    plt.close()

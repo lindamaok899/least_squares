@@ -105,7 +105,7 @@ def _generate_cov_matrix(
 
     cov += cov.T
     cov[np.diag_indices(len(cols))] = 1
-    cov = cov_nearest(cov, method="nearest", threshold=1e-10, n_fact=2)
+    cov = cov_nearest(cov, method="nearest", threshold=1e-10, n_fact=1000)
     return cov
 
 

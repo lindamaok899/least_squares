@@ -14,6 +14,8 @@ sns.set_context("poster")
 sns.set_palette("Paired", 11)
 sns.set_color_codes()
 
+np.random.seed(9471)
+
 if not os.path.exists("../bld"):
     os.mkdir("../bld")
 
@@ -161,8 +163,6 @@ def generate_plots(data, x_name, y_label):
 # ======================================================================================
 # inputs
 # ======================================================================================
-np.random.seed(5471)
-
 nobs = 5000
 
 nvariables = 10
