@@ -43,9 +43,9 @@ for each implementation over different observations, variables and instruments a
 implementations.
 
 
-Structure of the project
+Structure of the file directory
 -------------------------------
-The project is organised into a code folder that contains all the modules you need to generate the benchmark plots. All plots will be generated and saved in a seperate bld folder that
+The file directory is organised into a code folder that contains all the modules you need to generate the benchmark plots. All plots will be generated and saved in a seperate bld folder that
 will be created as a result of invoking code embeded in the benchmark modules. 
 
 To reproduce the results mentioned above you will need to:
