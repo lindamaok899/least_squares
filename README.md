@@ -51,7 +51,7 @@ will be created as a result of invoking code embeded in the benchmark modules.
 
 To reproduce the results mentioned above you will need to:
 1. Clone/download my repository to your local pc/machine
-2. run the benchmark_ols.py and benchmark_iv.py modules contained in the code folder via anaconda using the comand ``python benchmark_ols.py´´ and ``python benchmark_iv.py´´.
+2. run the benchmark_ols.py and benchmark_iv.py modules contained in the code folder via anaconda using the comand 'python benchmark_ols.py' and 'python benchmark_iv.py'.
 3. Check for the generated .png files in the bld folder.
 
 These modules depend on the following modules (also contained in the code folder)
