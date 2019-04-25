@@ -163,23 +163,25 @@ def generate_plots(data, x_name, y_label):
 # ======================================================================================
 # inputs
 # ======================================================================================
-nobs = 5000
+nobs = 200
 
-nvariables = 10
+nvariables = 9
 
-nobs_list = (
-    list(range(200, 2000, 200))
-    + list(range(2000, 10000, 1000))
-    + list(range(10000, 20000, 2000))
-)
+#nobs_list = (
+#    list(range(200, 2000, 200))
+#    + list(range(2000, 10000, 1000))
+#    + list(range(10000, 20000, 2000))
+#)
 
+nobs_list = list(range(200, 1700, 200))
+    
 collinearities = np.arange(0.2, 0.99, 0.02)
 
 nvariables_list = list(range(5, 55, 5))
 
-data_dim_nobs = [(n, 30) for n in nobs_list]
+data_dim_nobs = [(n, 9) for n in nobs_list]
 
-data_dim_vars = [(5000, n) for n in nvariables_list]
+data_dim_vars = [(200, n) for n in nvariables_list]
 
 func_list = [
     matrix_inversion_np,
